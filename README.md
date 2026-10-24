@@ -1,1 +1,0 @@
-# Ptivis26_kooditon_ohjelmisto_kehitys

@@ -6,6 +6,9 @@ public class AnswerBlock : MonoBehaviour
 {
     public TextMeshProUGUI answerText;
 
+    // Assign the correct MathManager in the Inspector
+    public MathManager manager;
+
     [HideInInspector]
     public int answer;
 
@@ -28,12 +31,14 @@ public class AnswerBlock : MonoBehaviour
 
         alreadyHit = true;
 
-        MathManager manager =
-            FindFirstObjectByType<MathManager>();
-
+        // Communicate with the assigned MathManager
         if (manager != null)
         {
             manager.CheckAnswer(isCorrect);
+        }
+        else
+        {
+            Debug.LogError("MathManager is not assigned to " + gameObject.name);
         }
     }
 }

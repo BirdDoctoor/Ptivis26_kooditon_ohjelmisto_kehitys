@@ -2,14 +2,18 @@
 using UnityEngine;
 using TMPro;
 using System.Collections.Generic;
+using System.Linq;
 
 public class MathManager : MonoBehaviour
 {
     public TextMeshProUGUI questionText;
     public AnswerBlock[] answerBlocks;
+    public GameObject barrier;
 
-    public int score = 0;
+    private int correctAnswer;
+    private bool questionActive = true;
 
+    // List of addition and subtraction questions
     private List<string> calculations = new List<string>()
     {
         "2+3", "4+4", "5+5", "6+3",
@@ -21,44 +25,61 @@ public class MathManager : MonoBehaviour
         "6-2", "4-1"
     };
 
-    private List<string> questionOrder;
-    private int correctAnswer;
+    void Awake()
+    {
+        // Find the barrier inside this MathManager
+        foreach (Transform child in GetComponentsInChildren<Transform>(true))
+        {
+            if (child.name == "Barrier")
+            {
+                barrier = child.gameObject;
+                break;
+            }
+        }
+
+        // Check if the barrier was found
+        if (barrier != null)
+        {
+            Debug.Log(gameObject.name + " controls " + barrier.name);
+        }
+        else
+        {
+            Debug.LogError("No Barrier found for " + gameObject.name);
+        }
+    }
 
     void Start()
     {
-        ShuffleQuestions();
-        GenerateQuestion();
-    }
-
-    void ShuffleQuestions()
-    {
-        questionOrder = new List<string>(calculations);
-
-        for (int i = 0; i < questionOrder.Count; i++)
+        // Check if all references are assigned
+        if (questionText == null)
         {
-            int randomIndex = Random.Range(i, questionOrder.Count);
-
-            string temp = questionOrder[i];
-            questionOrder[i] = questionOrder[randomIndex];
-            questionOrder[randomIndex] = temp;
-        }
-    }
-
-    public void GenerateQuestion()
-    {
-        if (questionOrder.Count == 0)
-        {
-            questionText.text = "You finished all questions!";
-            foreach (AnswerBlock block in answerBlocks)
-                block.gameObject.SetActive(false);
-
-            Debug.Log("All questions completed! Final score: " + score);
+            Debug.LogError("Question Text is not assigned!");
             return;
         }
 
-        string calculation = questionOrder[0];
-        questionOrder.RemoveAt(0);
+        if (answerBlocks == null || answerBlocks.Length < 3)
+        {
+            Debug.LogError("You need to assign 3 Answer Blocks!");
+            return;
+        }
 
+        if (barrier == null)
+        {
+            Debug.LogError("Barrier is missing!");
+            return;
+        }
+
+        GenerateQuestion();
+    }
+
+    // Generate a random question and three answers
+    void GenerateQuestion()
+    {
+        string calculation = calculations[
+            Random.Range(0, calculations.Count)
+        ];
+
+        // Split the calculation into two numbers
         string[] numbers = calculation.Split(
             new char[] { '+', '-' }
         );
@@ -66,6 +87,7 @@ public class MathManager : MonoBehaviour
         int number1 = int.Parse(numbers[0]);
         int number2 = int.Parse(numbers[1]);
 
+        // Calculate the correct answer
         if (calculation.Contains("+"))
             correctAnswer = number1 + number2;
         else
@@ -73,11 +95,12 @@ public class MathManager : MonoBehaviour
 
         questionText.text = calculation + " = ?";
 
+        // Choose a random block for the correct answer
         int correctBox = Random.Range(0, 3);
 
         List<int> usedAnswers = new List<int>();
-
-        for (int i = 0; i < answerBlocks.Length; i++)
+        usedAnswers.Add(correctAnswer);
+        for (int i = 0; i < 3; i++)
         {
             int answer;
 
@@ -87,16 +110,17 @@ public class MathManager : MonoBehaviour
             }
             else
             {
+                // Generate a unique wrong answer
                 do
                 {
                     answer = Random.Range(0, 20);
                 }
-                while (answer == correctAnswer ||
-                       usedAnswers.Contains(answer));
+                while (usedAnswers.Contains(answer));
             }
 
             usedAnswers.Add(answer);
 
+            // Set the answer and show the block
             answerBlocks[i].SetAnswer(
                 answer,
                 answer == correctAnswer
@@ -106,18 +130,32 @@ public class MathManager : MonoBehaviour
         }
     }
 
+    // Check the player's answer
     public void CheckAnswer(bool isCorrect)
     {
+        if (!questionActive)
+            return;
+
         if (isCorrect)
         {
-            score++;
-            Debug.Log("Correct! Score: " + score);
+            questionActive = false;
+
+            // Remove the barrier
+            barrier.SetActive(false);
+
+            questionText.text = "CORRECT!";
+
+            // Hide all answer blocks
+            foreach (AnswerBlock block in answerBlocks)
+            {
+                block.gameObject.SetActive(false);
+            }
+
+            Debug.Log("Barrier removed!");
         }
         else
         {
-            Debug.Log("Wrong answer!");
+            Debug.Log("Wrong answer! Try again.");
         }
-
-        GenerateQuestion();
     }
 }

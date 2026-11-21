@@ -17,4 +17,7 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/MatikkaMetsa.unity
     guid: 7d88300721af589438aaa495dbdbb326
+  - enabled: 1
+    path: Assets/Scenes/AjanAallot.unity
+    guid: e114ad807d00eb04fb485e51140ae549
   m_configObjects: {}

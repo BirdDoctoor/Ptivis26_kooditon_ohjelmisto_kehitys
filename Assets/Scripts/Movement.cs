@@ -9,8 +9,7 @@ public class Movement : MonoBehaviour
     [Header("Movement Settings")]
     public float moveSpeed = 5f;
     public float jumpForce = 10f;
-
-    [Header("Ground Detection")]
+    // Ground detection settings
     public Transform groundCheck;
     public float groundCheckRadius = 0.15f;
     public LayerMask groundLayer;
@@ -55,6 +54,7 @@ public class Movement : MonoBehaviour
         {
             animator.SetTrigger("takeOf");
             rb.velocity = new Vector2(rb.velocity.x, jumpForce);
+            
         }
 
 

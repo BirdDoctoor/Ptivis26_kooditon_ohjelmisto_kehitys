@@ -5,7 +5,6 @@ public class Movement : MonoBehaviour
     // Movement settings
     public float moveSpeed = 5f;
     public float jumpForce = 10f;
-
     // Ground detection settings
     public Transform groundCheck;
     public float groundCheckRadius = 0.15f;
@@ -43,6 +42,7 @@ public class Movement : MonoBehaviour
         {
             // Apply upward velocity without changing horizontal velocity
             rb.velocity = new Vector2(rb.velocity.x, jumpForce);
+            
         }
     }
 

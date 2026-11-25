@@ -1,8 +1,8 @@
 
 using UnityEngine;
 using TMPro;
+using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 
 public class MathManager : MonoBehaviour
 {
@@ -10,10 +10,21 @@ public class MathManager : MonoBehaviour
     public AnswerBlock[] answerBlocks;
     public GameObject barrier;
 
+    [Header("Audio")]
+    public AudioSource audioSource;
+    public AudioClip introductionSound;
+
+    public AudioClip[] calculationSounds;
+    public AudioClip[] correctSounds;
+    public AudioClip[] wrongSounds;
+
     private int correctAnswer;
     private bool questionActive = true;
+    private bool questionCompleted = false;
 
-    // List of addition and subtraction questions
+    private AudioClip currentCalculationSound;
+
+    // Addition and subtraction questions
     private List<string> calculations = new List<string>()
     {
         "2+3", "4+4", "5+5", "6+3",
@@ -27,7 +38,7 @@ public class MathManager : MonoBehaviour
 
     void Awake()
     {
-        // Find the barrier inside this MathManager
+        // Find Barrier inside this MathManager
         foreach (Transform child in GetComponentsInChildren<Transform>(true))
         {
             if (child.name == "Barrier")
@@ -37,7 +48,6 @@ public class MathManager : MonoBehaviour
             }
         }
 
-        // Check if the barrier was found
         if (barrier != null)
         {
             Debug.Log(gameObject.name + " controls " + barrier.name);
@@ -48,25 +58,51 @@ public class MathManager : MonoBehaviour
         }
     }
 
-    void Start()
+    IEnumerator Start()
     {
-        // Check if all references are assigned
         if (questionText == null)
         {
             Debug.LogError("Question Text is not assigned!");
-            return;
+            yield break;
         }
 
         if (answerBlocks == null || answerBlocks.Length < 3)
         {
             Debug.LogError("You need to assign 3 Answer Blocks!");
-            return;
+            yield break;
         }
 
         if (barrier == null)
         {
             Debug.LogError("Barrier is missing!");
-            return;
+            yield break;
+        }
+
+        if (audioSource == null)
+        {
+            Debug.LogError("Audio Source is not assigned!");
+            yield break;
+        }
+
+        if (calculationSounds == null ||
+            calculationSounds.Length != calculations.Count)
+        {
+            Debug.LogError(
+                "You need exactly one calculation sound for each calculation!"
+            );
+            yield break;
+        }
+
+        // Make sure barrier starts enabled
+        barrier.SetActive(true);
+
+        // Play introduction
+        questionText.text = "";
+
+        if (introductionSound != null)
+        {
+            audioSource.PlayOneShot(introductionSound);
+            yield return new WaitForSeconds(introductionSound.length);
         }
 
         GenerateQuestion();
@@ -75,11 +111,21 @@ public class MathManager : MonoBehaviour
     // Generate a random question and three answers
     void GenerateQuestion()
     {
-        string calculation = calculations[
-            Random.Range(0, calculations.Count)
-        ];
+        questionActive = true;
+        questionCompleted = false;
 
-        // Split the calculation into two numbers
+        // Make sure barrier is enabled for the new question
+        if (barrier != null)
+        {
+            barrier.SetActive(true);
+        }
+
+        int randomIndex = Random.Range(0, calculations.Count);
+
+        string calculation = calculations[randomIndex];
+
+        currentCalculationSound = calculationSounds[randomIndex];
+
         string[] numbers = calculation.Split(
             new char[] { '+', '-' }
         );
@@ -87,7 +133,6 @@ public class MathManager : MonoBehaviour
         int number1 = int.Parse(numbers[0]);
         int number2 = int.Parse(numbers[1]);
 
-        // Calculate the correct answer
         if (calculation.Contains("+"))
             correctAnswer = number1 + number2;
         else
@@ -95,11 +140,12 @@ public class MathManager : MonoBehaviour
 
         questionText.text = calculation + " = ?";
 
-        // Choose a random block for the correct answer
+        // Choose correct answer position
         int correctBox = Random.Range(0, 3);
 
         List<int> usedAnswers = new List<int>();
         usedAnswers.Add(correctAnswer);
+
         for (int i = 0; i < 3; i++)
         {
             int answer;
@@ -110,7 +156,6 @@ public class MathManager : MonoBehaviour
             }
             else
             {
-                // Generate a unique wrong answer
                 do
                 {
                     answer = Random.Range(0, 20);
@@ -120,7 +165,6 @@ public class MathManager : MonoBehaviour
 
             usedAnswers.Add(answer);
 
-            // Set the answer and show the block
             answerBlocks[i].SetAnswer(
                 answer,
                 answer == correctAnswer
@@ -128,9 +172,29 @@ public class MathManager : MonoBehaviour
 
             answerBlocks[i].gameObject.SetActive(true);
         }
+
+        PlayCalculationSound();
     }
 
-    // Check the player's answer
+    // Repeat current calculation
+    public void RepeatCalculation()
+    {
+        if (!questionActive)
+            return;
+
+        PlayCalculationSound();
+    }
+
+    void PlayCalculationSound()
+    {
+        if (currentCalculationSound == null)
+            return;
+
+        audioSource.Stop();
+        audioSource.PlayOneShot(currentCalculationSound);
+    }
+
+    // Check player's answer
     public void CheckAnswer(bool isCorrect)
     {
         if (!questionActive)
@@ -139,23 +203,55 @@ public class MathManager : MonoBehaviour
         if (isCorrect)
         {
             questionActive = false;
-
-            // Remove the barrier
-            barrier.SetActive(false);
+            questionCompleted = true;
 
             questionText.text = "CORRECT!";
 
-            // Hide all answer blocks
-            foreach (AnswerBlock block in answerBlocks)
+            // Play correct sound
+            PlayRandomSound(correctSounds);
+
+
+            // DISABLE BARRIER
+            if (barrier != null)
             {
-                block.gameObject.SetActive(false);
+                barrier.SetActive(false);
+                Debug.Log("Barrier disabled!");
             }
 
-            Debug.Log("Barrier removed!");
+            Debug.Log("Correct answer! Walk through the barrier.");
         }
         else
         {
+            // Play wrong sound
+            PlayRandomSound(wrongSounds);
+
             Debug.Log("Wrong answer! Try again.");
         }
+    }
+
+    // Play random sound
+    void PlayRandomSound(AudioClip[] sounds)
+    {
+        if (sounds == null || sounds.Length == 0)
+            return;
+
+        AudioClip clip = sounds[
+            Random.Range(0, sounds.Length)
+        ];
+
+        if (clip != null)
+        {
+            audioSource.PlayOneShot(clip);
+        }
+    }
+
+    // Called when player walks through barrier
+    public void NextQuestion()
+    {
+        if (!questionCompleted)
+            return;
+
+        // GenerateQuestion will enable the barrier again
+        GenerateQuestion();
     }
 }

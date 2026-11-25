@@ -1,12 +1,26 @@
 
 using UnityEngine;
 using TMPro;
+using System.Collections;
 using System.Collections.Generic;
 
 public class Clock_manager : MonoBehaviour
 {
+    [Header("UI")]
     public TextMeshProUGUI questionText;
     public Clock_Anserw[] answerBlocks;
+
+    [Header("Audio")]
+    public AudioSource audioSource;
+
+    public AudioClip clip1;
+    public AudioClip clip2;
+
+    // Correct-answer sounds (Clip 3, 4, 5, etc.)
+    public AudioClip[] correctSounds;
+
+    // Four random wrong-answer sounds
+    public AudioClip[] wrongSounds;
 
     [System.Serializable]
     public class ClockAnswer
@@ -15,7 +29,8 @@ public class Clock_manager : MonoBehaviour
         public Sprite clockImage;
     }
 
-    public List<ClockAnswer> clockAnswers = new List<ClockAnswer>();
+    public List<ClockAnswer> clockAnswers =
+        new List<ClockAnswer>();
 
     private string[] questions =
     {
@@ -29,7 +44,7 @@ public class Clock_manager : MonoBehaviour
     };
 
     private int currentQuestionIndex = 0;
-    private bool questionActive = true;
+    private bool questionActive = false;
 
     void Start()
     {
@@ -40,6 +55,31 @@ public class Clock_manager : MonoBehaviour
             return;
         }
 
+        if (audioSource == null)
+        {
+            Debug.LogError("Assign an AudioSource!");
+            return;
+        }
+
+        StartCoroutine(StartGame());
+    }
+
+    IEnumerator StartGame()
+    {
+        // Play startup clip 1
+        if (clip1 != null)
+        {
+            audioSource.PlayOneShot(clip1);
+            yield return new WaitForSeconds(clip1.length);
+        }
+
+        // Play startup clip 2
+        if (clip2 != null)
+        {
+            audioSource.PlayOneShot(clip2);
+            yield return new WaitForSeconds(clip2.length);
+        }
+
         GenerateQuestion();
     }
 
@@ -48,7 +88,6 @@ public class Clock_manager : MonoBehaviour
         if (currentQuestionIndex >= questions.Length)
         {
             questionText.text = "ALL QUESTIONS COMPLETED!";
-
             questionActive = false;
 
             foreach (Clock_Anserw block in answerBlocks)
@@ -59,9 +98,8 @@ public class Clock_manager : MonoBehaviour
 
         string correctTime = questions[currentQuestionIndex];
 
-        questionText.text = "Which clock shows " + correctTime + "?";
+        questionText.text = "Kello on " + correctTime ;
 
-        // Find the correct clock image
         ClockAnswer correctClock = clockAnswers.Find(
             x => x.time == correctTime
         );
@@ -72,7 +110,6 @@ public class Clock_manager : MonoBehaviour
             return;
         }
 
-        // Choose a random incorrect clock
         List<ClockAnswer> wrongClocks = clockAnswers.FindAll(
             x => x.time != correctTime &&
                  x.clockImage != null &&
@@ -89,7 +126,6 @@ public class Clock_manager : MonoBehaviour
             Random.Range(0, wrongClocks.Count)
         ];
 
-        // Randomly choose which block is correct
         int correctBox = Random.Range(0, 2);
 
         answerBlocks[correctBox].SetAnswer(
@@ -115,13 +151,44 @@ public class Clock_manager : MonoBehaviour
         {
             questionActive = false;
 
-            currentQuestionIndex++;
-
-            GenerateQuestion();
+            StartCoroutine(CorrectAnswerSequence());
         }
         else
         {
+            PlayWrongSound();
             Debug.Log("Wrong answer! Try again.");
         }
+    }
+
+    void PlayWrongSound()
+    {
+        if (wrongSounds == null || wrongSounds.Length == 0)
+            return;
+
+        AudioClip randomWrongSound = wrongSounds[
+            Random.Range(0, wrongSounds.Length)
+        ];
+
+        if (randomWrongSound != null)
+            audioSource.PlayOneShot(randomWrongSound);
+    }
+
+    IEnumerator CorrectAnswerSequence()
+    {
+        // Play the correct-answer sound for this question
+        if (currentQuestionIndex < correctSounds.Length)
+        {
+            AudioClip correctSound = correctSounds[currentQuestionIndex];
+
+            if (correctSound != null)
+            {
+                audioSource.PlayOneShot(correctSound);
+                yield return new WaitForSeconds(correctSound.length);
+            }
+        }
+
+        currentQuestionIndex++;
+
+        GenerateQuestion();
     }
 }
